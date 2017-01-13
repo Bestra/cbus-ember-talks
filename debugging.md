@@ -226,6 +226,120 @@ App = Ember.Application.extend({
 
 ---
 
+# Javascript errors
+
+---
+
+# Stacktraces
+
+- Check EmberError.stack
+- Use breakpoints to set breakpoints
+
+---
+# The Error stack
+![inline](debugging_images/backburner_error_stack.png)
+
+---
+# Network requests
+
+![inline](debugging_images/hover_on_network.png)
+
+- Chrome is your master now
+
+---
+# Backburner
+
+```javascript
+Ember.run.backburner.DEBUG = true;
+App = Ember.Application.extend({
+});
+```
+* Go up the stack to `invokeWithError`
+
+---
+# Ember Data
+
+- Start at the network request
+- End at the store
+- Async relationships are promises
+
+---
+
+# Me !== Ember
+
+What I think should happen is not what Ember thinks
+
+---
+
+# Learn
+
+- The Ember Guides
+- Api Docs
+- Source Code
+- Tests
+- Ember Slack
+
+---
+# Tests - An Illustrated Example
+
+---
+
+test code -> route -> store -> ajax -> controller -> component
+
+**This is why acceptance tests get complicated**
+
+---
+# I see nothing
+![inline](debugging_images/empty render 135112.jpg)
+
+---
+# Check routing
+![inline](debugging_images/router-transitions 135525.jpg)
+
+---
+# Router Error Action
+![inline](debugging_images/router error handling 135927.jpg)
+
+---
+# Breakpoints for Breakpoints
+![inline](debugging_images/copy error 135957.jpg)
+
+---
+![inline](debugging_images/command-o 140030.jpg)
+
+---
+![inline](debugging_images/this_does_not_help 140120.jpg)
+
+---
+![inline](debugging_images/this_helps_losts 140149.jpg)
+
+---
+![inline](debugging_images/conditional-breakpoint 140422.jpg)
+
+---
+![inline](debugging_images/set-better-breakpoint 141716.jpg)
+
+---
+![inline](debugging_images/ember-error 160642.jpg)
+
+---
+![inline](debugging_images/run loop flush 160907.jpg)
+
+---
+![inline](debugging_images/actually not helpful 161105.jpg)
+
+---
+![inline](debugging_images/jump across ajax 161239.jpg)
+
+---
+![inline](debugging_images/check ajax response 161805.jpg)
+
+---
+![inline](debugging_images/ember data tests 162016.jpg)
+
+---
+
+
 
 
  
