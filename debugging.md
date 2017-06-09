@@ -175,10 +175,9 @@ setupController(controller, model) {
 
 ---
 
-# Did the setter get called?
-
-## When you thought it would?
-## With the value you intended?
+- Did the setter get called?
+- When you thought it would?
+- With the value you intended?
 
 ---
 
@@ -250,24 +249,6 @@ this.set('name', 'Fran');
 this.get('hello') // "Hello Chris"
 ```
 
----
-
-## CPs and Objects
-
-```javascript
-{
-  user: {name: "Chris"},
-  hello: Ember.computed('user', function() {
-  return "Hello " + this.get('user.name'); })
-}
-//-----------------
-this.get('hello') // "Hello Chris"
-this.set('user.name', 'Fran');
-this.get('hello') // "Hello Chris"
-
-this.set('user', {name: "Mike"});
-this.get('hello') // "Hello Mike"
-```
 ---
 
 ## When to recompute?
