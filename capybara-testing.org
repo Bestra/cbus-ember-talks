@@ -1,11 +1,14 @@
-* Replacing capybara tests with ember tests
+* Replacing full stack tests with ember tests
+** Definitions
+   - full-stack tests are tests that run both the client and the server and interface via the browser.
+     My example application uses [[https:github.com/teamcapybara/capybara][Capybara]] but there are similar projects for most languages and frameworks
 * Good things about full-stack tests
 ** Tests the whole system
 ** Promotes thinking about the system from the user's point of view
 ** Some server/client interactions need to be tested together (websockets, etc)
 ** Creating test data is easier
    We use the same FactoryGirl factories to make data for capybara tests.
-** Less test suite accounting if done right (fewer tests that test more of the stack)
+** Fewer total tests
 * Bad things about full-stack tests?
 ** Often exercizes too much of the system for a given case
    With a traditional server-rendered application there's almost a 1:1 ratio of user actions to controller actions.
@@ -16,11 +19,143 @@
 ** Slow
 ** Fragile (system works, tests fail)
 ** High setup per test
+** Offer little testability signal besides data setup
+*** Testability can be a useful signal
+**** If the system is hard to test, improving testability will often improve the overall design
+***** Capybara tests give little indication of the frontend's testability for design purposes
+**** Leverage things like Services and Components
+**** Link to component testing blog post
 * Auditing your test suite
 ** Redundancy wrt API boundaries
+   I'm going to make up a fake rolodex page to use an example for testing.
+Here's an example of an acceptance test we would've written early on in our app's life.
+Instead of writing actual test code, I'm going to write out sequence diagram.
+** Draw some sequence diagrams
+   #+begin_src uml
+Title: User can persist a new entry with all fields filled out.
+User->App: visit "/rolodex/" URL
+User->App: click "+"
+User->App: fill in first name with "Steve"
+User->App: fill in last name with "Jones"
+User->App: fill in phone number with "112-3456"
+User->App: click "Save"
+Note over User: expect to see "saved"
+User->App: reload page
+Note over User: expect to see "Steve Jones" with "112-3456"
+   #+end_src
+This test creates a new entry in the rolodex, fills it out, saves, and then reloads
+to ensure that the new entry was properly persisted.  That's a lot of things for a single test!
+In some ways this is a great *smoke test*.  It verifies that a big chunk of the system is working in a holistic fashion.
+
+Now I'll add three other tests, just for some variety.
+   #+begin_src uml
+Title: User can persist a new entry omitting first name
+User->App: visit "/rolodex/" URL
+User->App: click "+"
+User->App: fill in last name with "Jones"
+User->App: fill in phone number with "112-3456"
+User->App: click "Save"
+Note over User: expect to see "saved"
+User->App: reload page
+Note over User: expect to see "Jones" with "112-3456"
+   #+end_src
+
+   #+begin_src uml
+Title: User can NOT persist a new entry omitting last name
+User->App: visit "/rolodex/" URL
+User->App: click "+"
+User->App: fill in phone number with "112-3456"
+User->App: click "Save"
+Note over User: expect to see error message for last name
+User->App: reload page
+Note over User: expect to see empty list
+   #+end_src
+
+   #+begin_src uml
+Title: Save button is disabled when phone number has letters
+User->App: visit "/rolodex/" URL
+User->App: click "+"
+User->App: fill in phone number with "FOO"
+Note over User: expect save to be disabled
+   #+end_src
+
+All four of the tests here will test different parts of the same page.  How can I make it easier to see which
+tests might be redundant as full-stack tests?  I'm going to add the API Server as an actor to my first test sequence
+to give some granularity as to what I'm actually testing.
+
+#+begin_src uml
+Title: User can persist a new entry with all fields filled out.
+User->Client: visit "/rolodex/" URL
+Client->API: GET api/entries
+API->Client: 200 {entries: []}
+User->Client: click "+"
+User->Client: fill in first name with "Steve"
+User->Client: fill in last name with "Jones"
+User->Client: fill in phone number with "112-3456"
+User->Client: click "Save"
+Client->API: POST api/entries {firstName: "Steve", ...}
+API->Client: 201 {id: 1, firstName: "Steve", ...}
+Note over User: expect to see "saved"
+User->Client: reload page
+Client->API: GET api/entries
+API->Client: 200 {entries: [{id: 1, firstName: "Steve", ...}]}
+Note over User: expect to see "Steve Jones" with "112-3456"
+#+end_src
+
+This test makes 3 server requests
+- GET api/entries :: loads the list of entries from the server. 
+- POST api/entries :: creates a new entry
+
+
+#+begin_src uml
+Title: User can NOT persist a new entry omitting last name
+User->Client: visit "/rolodex/" URL
+Client->API: GET api/entries
+API->Client: 200 {entries: []}
+User->Client: click "+"
+User->Client: fill in first name with "Steve"
+User->Client: fill in phone number with "112-3456"
+User->Client: click "Save"
+Client->API: POST api/entries {firstName: "Steve", ...}
+API->Client: 422 {errors:{...}}
+Note over User: expect to see error message for last name
+#+end_src
+
+This test makes 2 server requests
+- GET api/entries :: loads the list of entries from the server. 
+- POST api/entries :: creates a new entry (with errors)
+
+
 ** How many tests hit the same endpoints with the same kinds of requests?
+All four of the sample tests I showed hit the same two same endpoints, regardess of what happens on the client.
+As far as the server is concerned, nothing happens until the client makes a request.
 ** Tests that are redundant API-wise can probably be turned into ember tests
-** Having some full stack tests is still important!
+#+begin_src uml
+Title: Ember: Saving posts to the API
+User->Client: visit "/rolodex/" URL
+Client->Mock: GET api/entries
+Mock-->Client: 200 {entries: []}
+User->Client: click "+"
+User->Client: fill in first name with "Steve"
+User->Client: fill in last name with "Jones"
+User->Client: fill in phone number with "112-3456"
+User->Client: click "Save"
+Client->Mock: POST api/entries {firstName: "Steve", ...}
+Mock-->Client: 201 {id: 1, firstName: "Steve", ...}
+Note over Mock: Assert expected POST payload
+Note over User: expect to see "saved"
+#+end_src
+
+#+begin_src uml
+Title: Ember: Displaying a list of posts
+User->Client: visit "/rolodex/" URL
+Client->mock: GET api/entries
+mock-->Client: 200 {entries: [{id: 1, firstName: "Steve", ...}]}
+Note over User: expect to see "Steve Jones" with "112-3456"
+#+end_src
+
+** Create new ember tests that start and stop at server requests
+** Having some full-stack tests is still important!
 * Planning to convert a test
 ** Think about what the boundaries for new test(s) should be
    - What unique aspect of your application are you trying to test?
@@ -46,11 +181,6 @@
 **** The critical part of the system that you're trying to test might not care about any of that.
 ** API boundaries
 *** Use mirage or mockjax to assert when needed
-* Testability can be a useful signal
-** If the system is hard to test, improving testability will often improve the overall design
-*** Capybara tests give little indication of the frontend's testability for design purposes
-** Leverage things like Services and Components
-** Link to component testing blog post
 * Notes
   - Make sure to add actual examples of the capybara spec we're talking about
   - Give a brief refresher about what the spec is doing (what's the difference between the request spec, the feature spec, etc)
