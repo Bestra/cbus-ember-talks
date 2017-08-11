@@ -1,0 +1,56 @@
+* Replacing capybara tests with ember tests
+* Good things about full-stack tests
+** Tests the whole system
+** Promotes thinking about the system from the user's point of view
+** Some server/client interactions need to be tested together (websockets, etc)
+** Creating test data is easier
+   We use the same FactoryGirl factories to make data for capybara tests.
+** Less test suite accounting if done right (fewer tests that test more of the stack)
+* Bad things about full-stack tests?
+** Often exercizes too much of the system for a given case
+   With a traditional server-rendered application there's almost a 1:1 ratio of user actions to controller actions.
+   With a client application the user could perform many actions before ever doing something that hits a controller.
+*** Testing client-side validations with Capybara (they never hit the server)
+*** Things that should be unit-tested are instead implicitly exercised with acceptance tests
+**** Combinatorial possibilities when going up the stack
+** Slow
+** Fragile (system works, tests fail)
+** High setup per test
+* Auditing your test suite
+** Redundancy wrt API boundaries
+** How many tests hit the same endpoints with the same kinds of requests?
+** Tests that are redundant API-wise can probably be turned into ember tests
+** Having some full stack tests is still important!
+* Planning to convert a test
+** Think about what the boundaries for new test(s) should be
+   - What unique aspect of your application are you trying to test?
+   - Describe guidelines for test boundaries
+     - API calls
+     - DOM side effects
+** Pick test types based on the boundaries and needs
+   - Navigation/routing
+   - Making appropriate API calls
+   - Granularity of user interaction
+   A single capybara test might actually turn into several different Ember tests (more on that)
+** Don't lose test coverage
+   You may need to add new request specs to take the place of the old capybara test, in addition to the 
+   new ember tests
+* The conversion
+** Creating Test Data
+*** The most difficult part of creating ember tests
+*** Mirage or FactoryGuy
+*** Don't use custom serializers as justification for redundant testing
+    Test the serializers separately with unit tests!
+*** Component tests make loading test data much simpler
+**** Acceptance tests will test authorization and data loading for all route segments.
+**** The critical part of the system that you're trying to test might not care about any of that.
+** API boundaries
+*** Use mirage or mockjax to assert when needed
+* Testability can be a useful signal
+** If the system is hard to test, improving testability will often improve the overall design
+*** Capybara tests give little indication of the frontend's testability for design purposes
+** Leverage things like Services and Components
+** Link to component testing blog post
+* Notes
+  - Make sure to add actual examples of the capybara spec we're talking about
+  - Give a brief refresher about what the spec is doing (what's the difference between the request spec, the feature spec, etc)
