@@ -47,7 +47,7 @@ This test creates a new entry in the rolodex, fills it out, saves, and then relo
 to ensure that the new entry was properly persisted.  That's a lot of things for a single test!
 In some ways this is a great *smoke test*.  It verifies that a big chunk of the system is working in a holistic fashion.
 
-Now I'll add three other tests, just for some variety.
+Now I'll add three other tests.  
    #+begin_src uml
 Title: User can persist a new entry omitting first name
 User->App: visit "/rolodex/" URL
@@ -105,9 +105,11 @@ Note over User: expect to see "Steve Jones" with "112-3456"
 This test makes 3 server requests
 - GET api/entries :: loads the list of entries from the server. 
 - POST api/entries :: creates a new entry
+- GET api/entries :: loads the list of entries from the server again
 
 
-#+begin_src uml
+Here's the other test that deals with persistence, broken up in the same fashion.
+#+begin_src plantuml
 Title: User can NOT persist a new entry omitting last name
 User->Client: visit "/rolodex/" URL
 Client->API: GET api/entries
@@ -125,36 +127,12 @@ This test makes 2 server requests
 - GET api/entries :: loads the list of entries from the server. 
 - POST api/entries :: creates a new entry (with errors)
 
-
 ** How many tests hit the same endpoints with the same kinds of requests?
-All four of the sample tests I showed hit the same two same endpoints, regardess of what happens on the client.
-As far as the server is concerned, nothing happens until the client makes a request.
-** Tests that are redundant API-wise can probably be turned into ember tests
-#+begin_src uml
-Title: Ember: Saving posts to the API
-User->Client: visit "/rolodex/" URL
-Client->Mock: GET api/entries
-Mock-->Client: 200 {entries: []}
-User->Client: click "+"
-User->Client: fill in first name with "Steve"
-User->Client: fill in last name with "Jones"
-User->Client: fill in phone number with "112-3456"
-User->Client: click "Save"
-Client->Mock: POST api/entries {firstName: "Steve", ...}
-Mock-->Client: 201 {id: 1, firstName: "Steve", ...}
-Note over Mock: Assert expected POST payload
-Note over User: expect to see "saved"
-#+end_src
-
-#+begin_src uml
-Title: Ember: Displaying a list of posts
-User->Client: visit "/rolodex/" URL
-Client->mock: GET api/entries
-mock-->Client: 200 {entries: [{id: 1, firstName: "Steve", ...}]}
-Note over User: expect to see "Steve Jones" with "112-3456"
-#+end_src
-
-** Create new ember tests that start and stop at server requests
+   Both of the tests I just broke apart are interacting solely with the 'entries' endpoint.  No matter what happens on the client -
+   whether the form is totally filled out, empty, or something in between -
+   the end result from the server's point of view is just another permutation of a POST request.
+   
+   Full-stack tests that consume the same API endpoints are prime candidates for splitting into client-side tests and server-side tests.
 ** Having some full-stack tests is still important!
 * Planning to convert a test
 ** Think about what the boundaries for new test(s) should be
@@ -162,11 +140,63 @@ Note over User: expect to see "Steve Jones" with "112-3456"
    - Describe guidelines for test boundaries
      - API calls
      - DOM side effects
-** Pick test types based on the boundaries and needs
+   As an example of the high level process I use, I'm going to go back to the first persistence test from above, 'A user can persist an entry with all fields filled out.', and
+   try to add in all the implicit assertions - thing that have to happen over the course of the test.
+#+begin_src uml
+Title: User can persist a new entry with all fields filled out.
+User->Client: visit "/rolodex/" URL
+Client->API: GET api/entries
+Note over Client: visiting 'rolodex' route fetches all entries from the API
+API->Client: 200 {entries: []}
+Note over API: entries endpoint returns an empty array when there are no entries
+User->Client: click '+'
+Note over Client: clicking '+' shows the form for a new entry
+User->Client: fill in first name with "Steve"
+User->Client: fill in last name with "Jones"
+User->Client: fill in phone number with "112-3456"
+User->Client: click "Save"
+Client->API: POST api/entries {firstName: "Steve", ...}
+Note over Client: clicking 'Save' will post the new entry to the API with the form's data
+API->Client: 201 {id: 1, firstName: "Steve", ...}
+Note over API: entry endpoint returns a 201 with the newly persisted entry on success
+Note over Client: client shows a message when the promise for saving resolves successfully
+User->Client: reload page
+Client->API: GET api/entries
+Note over Client: visiting 'rolodex' route fetches all entries
+API->Client: 200 {entries: [{id: 1, firstName: "Steve", ...}]}
+Note over API: entries endpoint returns existing entries in the proper format
+Note over Client: client shows all entries returned from the server
+#+end_src
+
+In a perfect world, there'd only be one test for each of those assertions in the entire test suite. Testing the whole stack can be great
+because it does just that - a single test makes sure a whole bunch of things are correctly working in concert. For my purposes, though, I'd like to only
+test the whole stack when the situation calls for it.  That means creating more tests that are more narrowly focused on either the front end or the back end.
+
+For the time being I'll break this test up into a few client tests and a few server tests.  For the server side I'm going to assume something like [[https://relishapp.com/rspec/rspec-rails/docs/request-specs/request-spec][Rspec request specs]]. For the client
+side I'll assume I'm using an Ember [[https://guides.emberjs.com/v2.14.0/testing/acceptance/][acceptance tests]], replacing the real API with a mock.
+#+begin_src uml
+Title: Ember 1 - Saving a new rolodex entry posts all the form data to the server
+User->Client: visit "/rolodex/" URL
+Client->Mock: GET api/entries
+Mock->Client: 200 {entries: []}
+User->Client: click '+'
+User->Client: fill in first name with "Steve"
+User->Client: fill in last name with "Jones"
+User->Client: fill in phone number with "112-3456"
+User->Client: click "Save"
+Client->Mock: POST api/entries {firstName: "Steve", ...}
+Note over Mock: Assert that POST occured with form data
+Note over Client: Assert that success message appears
+#+end_src
+
+I'll go over some further details for mocking later.  For an acceptance test like this the client will normally need to load some data from the API as well as send data back.
+
+** Pick ember test types based on the boundaries and needs
    - Navigation/routing
    - Making appropriate API calls
    - Granularity of user interaction
    A single capybara test might actually turn into several different Ember tests (more on that)
+
 ** Don't lose test coverage
    You may need to add new request specs to take the place of the old capybara test, in addition to the 
    new ember tests
