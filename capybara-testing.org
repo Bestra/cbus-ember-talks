@@ -26,10 +26,11 @@
 **** Leverage things like Services and Components
 **** Link to component testing blog post
 * Auditing your test suite
-** Redundancy wrt API boundaries
-   I'm going to make up a fake rolodex page to use an example for testing.
-Here's an example of an acceptance test we would've written early on in our app's life.
-Instead of writing actual test code, I'm going to write out sequence diagram.
+  I'm going to make up a fake rolodex page to use an example for testing.
+** TODO add link to rolodex entry front end
+** TODO add link to rolodex entry back end
+  Instead of writing actual test code, I'm going to write out sequence diagrams.  I find them really useful in for talking about code and debugging,
+  and this way I don't have to trip over details
 ** Draw some sequence diagrams
    #+begin_src uml
 Title: User can persist a new entry with all fields filled out.
@@ -140,75 +141,102 @@ This test makes 2 server requests
    - Describe guidelines for test boundaries
      - API calls
      - DOM side effects
-   As an example of the high level process I use, I'm going to go back to the first persistence test from above, 'A user can persist an entry with all fields filled out.', and
-   try to add in all the implicit assertions - thing that have to happen over the course of the test.
-#+begin_src uml
-Title: User can persist a new entry with all fields filled out.
-User->Client: visit "/rolodex/" URL
-Client->API: GET api/entries
-Note over Client: visiting 'rolodex' route fetches all entries from the API
-API->Client: 200 {entries: []}
-Note over API: entries endpoint returns an empty array when there are no entries
-User->Client: click '+'
-Note over Client: clicking '+' shows the form for a new entry
-User->Client: fill in first name with "Steve"
-User->Client: fill in last name with "Jones"
-User->Client: fill in phone number with "112-3456"
-User->Client: click "Save"
-Client->API: POST api/entries {firstName: "Steve", ...}
-Note over Client: clicking 'Save' will post the new entry to the API with the form's data
-API->Client: 201 {id: 1, firstName: "Steve", ...}
-Note over API: entry endpoint returns a 201 with the newly persisted entry on success
-Note over Client: client shows a message when the promise for saving resolves successfully
-User->Client: reload page
-Client->API: GET api/entries
-Note over Client: visiting 'rolodex' route fetches all entries
-API->Client: 200 {entries: [{id: 1, firstName: "Steve", ...}]}
-Note over API: entries endpoint returns existing entries in the proper format
-Note over Client: client shows all entries returned from the server
-#+end_src
+*** An example
+    As an example of the high level process I use, I'm going to go back to the first persistence test from above, 'A user can persist an entry with all fields filled out.', and
+    try to add in all the implicit assertions - thing that have to happen over the course of the test.
+    #+begin_src uml
+ Title: User can persist a new entry with all fields filled out.
+ User->Client: visit "/rolodex/" URL
+ Client->API: GET api/entries
+ Note over Client: visiting 'rolodex' route fetches all entries from the API
+ API->Client: 200 {entries: []}
+ Note over API: entries endpoint returns an empty array when there are no entries
+ User->Client: click '+'
+ Note over Client: clicking '+' shows the form for a new entry
+ User->Client: fill in first name with "Steve"
+ User->Client: fill in last name with "Jones"
+ User->Client: fill in phone number with "112-3456"
+ User->Client: click "Save"
+ Client->API: POST api/entries {firstName: "Steve", ...}
+ Note over Client: clicking 'Save' will post the new entry to the API with the form's data
+ API->Client: 201 {id: 1, firstName: "Steve", ...}
+ Note over API: entry endpoint returns a 201 with the newly persisted entry on success
+ Note over Client: client shows a message when the promise for saving resolves successfully
+ User->Client: reload page
+ Client->API: GET api/entries
+ Note over Client: visiting 'rolodex' route fetches all entries
+ API->Client: 200 {entries: [{id: 1, firstName: "Steve", ...}]}
+ Note over API: entries endpoint returns existing entries in the proper format
+ Note over Client: client shows all entries returned from the server
+    #+end_src
 
-In a perfect world, there'd only be one test for each of those assertions in the entire test suite. Testing the whole stack can be great
-because it does just that - a single test makes sure a whole bunch of things are correctly working in concert. For my purposes, though, I'd like to only
-test the whole stack when the situation calls for it.  That means creating more tests that are more narrowly focused on either the front end or the back end.
+    In a perfect world, there'd only be one test for each of those assertions in the entire test suite. Testing the whole stack can be great
+    because it does just that - a single test makes sure a whole bunch of things are correctly working in concert. For my purposes, though, I'd like to only
+    test the whole stack when the situation calls for it.  That means creating more tests that are more narrowly focused on either the front end or the back end.
 
-For the time being I'll break this test up into a few client tests and a few server tests.  For the server side I'm going to assume something like [[https://relishapp.com/rspec/rspec-rails/docs/request-specs/request-spec][Rspec request specs]]. For the client
-side I'll assume I'm using an Ember [[https://guides.emberjs.com/v2.14.0/testing/acceptance/][acceptance tests]], replacing the real API with a mock.
-#+begin_src uml
-Title: Ember 1 - Saving a new rolodex entry posts all the form data to the server
-User->Client: visit "/rolodex/" URL
-Client->Mock: GET api/entries
-Mock->Client: 200 {entries: []}
-User->Client: click '+'
-User->Client: fill in first name with "Steve"
-User->Client: fill in last name with "Jones"
-User->Client: fill in phone number with "112-3456"
-User->Client: click "Save"
-Client->Mock: POST api/entries {firstName: "Steve", ...}
-Note over Mock: Assert that POST occured with form data
-Note over Client: Assert that success message appears
-#+end_src
-
-I'll go over some further details for mocking later.  For an acceptance test like this the client will normally need to load some data from the API as well as send data back.
-
-** Pick ember test types based on the boundaries and needs
-   - Navigation/routing
-   - Making appropriate API calls
-   - Granularity of user interaction
-   A single capybara test might actually turn into several different Ember tests (more on that)
-
+    For the time being I'll break this test up into a few client tests and a few server tests. For the client side I'll assume I'm using an Ember [[https://guides.emberjs.com/v2.14.0/testing/acceptance/][acceptance tests]], replacing the real API with a mock.
+    I'll go over a few ways to mock the api server later.
+    #+begin_src uml
+ Title: Ember 1 - Saving a new rolodex entry posts all the form data to the server
+ User->Client: visit "/rolodex/" URL
+ Client->Mock: GET api/entries
+ Mock->Client: 200 {entries: []}
+ User->Client: click '+'
+ User->Client: fill in first name with "Steve"
+ User->Client: fill in last name with "Jones"
+ User->Client: fill in phone number with "112-3456"
+ User->Client: click "Save"
+ Client->Mock: POST api/entries {firstName: "Steve", ...}
+ Note over Mock: Assert that POST occured with form data
+ Note over Client: Assert that success message appears
+    #+end_src
+    This smaller test still does a lot! It visits a route, interacts with the DOM, and talks to the mock API. 
+    In this test I'm making one assertion on the client side after the mock returns its POST response because the flash message will only appear when the promise for 
+    `entry.save()` resolves. 
+*** Server tests
+    Looking back at the sequence diagram for the full-stack test, I've tested the User->Client portions of the system, but I still need to test the Client->API part now.
+    The original full-stack test was checking a few cases for the API, so I'll need multiple server tests to make sure I don't lose any coverage.
+    #+begin_src uml
+ Title: API persists new entries and responds with 201
+ Test->API: POST api/entries {firstName: "Steve", ...}
+ API->Test: 201 {id: 1, firstName: "Steve", ...}
+ Note over Test: API returns a 201 with the newly persisted entry on success
+ Note over Test: database contains new entry
+    #+end_src
+ 
+    Here's a test for the invalid entry.
+    #+begin_src uml
+ Title: API returns 422 for invalid entry
+ Test->API: POST api/entries {lastName: "", ...}
+ API->Test: 422 {errors: {}}
+ Note over Test: API returns a 422
+ Note over Test: database does not contain new entry
+    #+end_src
 ** Don't lose test coverage
    You may need to add new request specs to take the place of the old capybara test, in addition to the 
    new ember tests
 * The conversion
 ** Creating Test Data
-*** The most difficult part of creating ember tests
-*** Mirage or FactoryGuy
-*** Don't use custom serializers as justification for redundant testing
-    Test the serializers separately with unit tests!
-*** Component tests make loading test data much simpler
+    For me this has initially been the most difficult part of most test migrations. Most of my backends are Rails, and if I'm already using [[https://github.com/thoughtbot/factory_girl][FactoryGirl]] then it's very convenient to
+    reuse the existing factories for full-stack tests.
+    [[http://www.ember-cli-mirage.com/][Mirage]] can simulate a full-blown API server and it can be used for development too. [[https://github.com/danielspaniel/ember-data-factory-guy][FactoryGuy]] is more meant for pushing models straight into the Ember Store, but it also has facilities for 
+    mocking HTTP requests.  Both are good solutions for acceptance tests.
+*** What -not- to test
+    A good thing about using a comprehensive framework is that big chunks of functionality are already in place, and normally they 'just work'
+    provided they're used correctly.  In this regard Ember's acceptance tests are good because they force me to avoid directly asserting things like 'when the server reponds with correct POST data the state of the model is updated.'
+    Those kind of tests have their place if I'm writing custom Ember Data adapters or serializers, but for most testing the system overall shouldn't have to care.  I want to test the unique aspects of _my_ pages and leave the common stuff
+    to the framework.
+
+** Pick ember test types based on the boundaries and needs
+*** Component tests make loading test data much simpler in some cases
 **** Acceptance tests will test authorization and data loading for all route segments.
 **** The critical part of the system that you're trying to test might not care about any of that.
+     I wrote a [[https://www.mutuallyhuman.com/blog/2016/01/22/component-integration-testing-in-ember][blog post]] about this very thing.
+   - Navigation/routing
+   - Making appropriate API calls
+   - Granularity of user interaction
+   A single capybara test might actually turn into several different Ember tests (more on that)
+
 ** API boundaries
 *** Use mirage or mockjax to assert when needed
 * Notes
