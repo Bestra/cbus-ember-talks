@@ -1,36 +1,42 @@
-* Replacing full stack tests with ember tests
-** Definitions
-   - full-stack tests are tests that run both the client and the server and interface via the browser.
-     My example application uses [[https:github.com/teamcapybara/capybara][Capybara]] but there are similar projects for most languages and frameworks
+* Replacing full stack tests with client tests
+** Tagline
+Full-stack testing of a single page app can essential to maintaining quality, but those tests come with tradeoffs.  Sometimes they're
+appropriate to write and sometimes they're appropriate to remove.
+** Opener
+I've been working on an Ember.js application for a client that started life as a
+Rails application some years ago. When we adopted Ember we already had a good number of existing full-stack tests in place.
+As our application has grown we've added all kinds of new tests, including many new full-stack tests.
+
+For the purposes of this post I'll define full-stack tests as tests that run both the client and the server and talk to your application via the browser.
+My example application uses [[https:github.com/teamcapybara/capybara][Capybara]] but there are similar projects for most languages and frameworks
 * Good things about full-stack tests
-** Tests the whole system
-** Promotes thinking about the system from the user's point of view
-** Some server/client interactions need to be tested together (websockets, etc)
-** Creating test data is easier
-   We use the same FactoryGirl factories to make data for capybara tests.
-** Fewer total tests
+Full-stack tests promote thinking about the app from user's point of view.  With a few assertions they can exercise all the disparate pieces of the system
+to confirm that they're properly working in concert.  For features like websocket interactions, a single full-stack smoke test is almost essential to confirm that things
+are going as planned, even if the individual parts of the interaction are also covered by unit tests.
+
+Most of the projects I work on are Rails applications that use Capybara for testing.  In that case, we also have the luxury of using test factories from the Rails application to build
+test data for the full-stack tests (thank you [[https://github.com/thoughtbot/factory_girl][FactoryGirl]]). Once we have some good page factories and page objects in place, new tests are quick to write and provide a lot of coverage.
+With a mature client framework like Ember, however, I find myself taking advantage of the separation between client and server and writing fewer full-stack test, or even removing existing ones.
 * Bad things about full-stack tests?
-** Often exercizes too much of the system for a given case
-   With a traditional server-rendered application there's almost a 1:1 ratio of user actions to controller actions.
-   With a client application the user could perform many actions before ever doing something that hits a controller.
-*** Testing client-side validations with Capybara (they never hit the server)
-*** Things that should be unit-tested are instead implicitly exercised with acceptance tests
-**** Combinatorial possibilities when going up the stack
-** Slow
-** Fragile (system works, tests fail)
-** High setup per test
-** Offer little testability signal besides data setup
-*** Testability can be a useful signal
-**** If the system is hard to test, improving testability will often improve the overall design
-***** Capybara tests give little indication of the frontend's testability for design purposes
-**** Leverage things like Services and Components
-**** Link to component testing blog post
-* Auditing your test suite
-  I'm going to make up a fake rolodex page to use an example for testing.
-** TODO add link to rolodex entry front end
-** TODO add link to rolodex entry back end
-  Instead of writing actual test code, I'm going to write out sequence diagrams.  I find them really useful in for talking about code and debugging,
-  and this way I don't have to trip over details
+Why would I remove a full-stack test? Isn't that coverage a good thing? Sometimes it can be too much of a good thing!  
+With a traditional server-rendered application there's almost a 1:1 ratio of user actions on the screen to controller actions on the back end.
+I go to a page, maybe fill out a few simple form fields, and hit 'Submit'. With a client application the user could perform many actions before ever doing something that communicates with
+the server. I can create complex form validations on the client that never have to submit to the server, and having to test those interactions via the full stack starts to feel a little wasteful.
+Most tests that exercise the full stack can be split up into a set of smaller tests that touch the client and the API separately.  Those smaller tests are often much faster as well.
+Waiting 15 seconds for a Capybara test to run vs. having the Ember test server auto reload in 2 seconds makes huge difference in the feedback loop for a feature.
+Those tests can also be fragile setup-wise, especially if an application has a lot of different kinds of data to load.  
+
+Creating tests for the system as a black box also doesn't provide me as a developer with any feedback about the design of the system's parts. Unit tests and more focused integration tests will
+give off a kind of 'testability' smell, and I've always found it beneficial to follow my nose in that regard.  Making a component (whether it's a part of the front end or the back end) easier to 
+test normally results in a component that's easier to reason about and easier to change later.  In Ember terms, testability drives me towards using [[https://guides.emberjs.com/v2.15.0/applications/services/][Services]] and components.   
+
+I also find that moving away from end to end tests makes me ask better questions before I write tests.  The goal isn't to write _more_ tests, it's to write better tests that give me the best overall
+bang for the buck.
+
+* Auditing an example full-stack test
+I'm going to make up a [[https://ember-twiddle.com/e2bd7210727e934a0fe9bca2762ced11?openFiles=controllers.application.js%252C][rolodex app]] to use as an example for testing.  This application lets users add an entry to their contacts.
+That's it!  It's not much but it's perfect for the purpose of discussion. I'm going to represent tests as sequence diagrams, handily created
+via [[https://github.com/bramp/js-sequence-diagrams%20][js-sequence-diagrams]].
 ** Draw some sequence diagrams
    #+begin_src uml
 Title: User can persist a new entry with all fields filled out.
@@ -110,7 +116,7 @@ This test makes 3 server requests
 
 
 Here's the other test that deals with persistence, broken up in the same fashion.
-#+begin_src plantuml
+#+begin_src uml
 Title: User can NOT persist a new entry omitting last name
 User->Client: visit "/rolodex/" URL
 Client->API: GET api/entries
@@ -128,12 +134,11 @@ This test makes 2 server requests
 - GET api/entries :: loads the list of entries from the server. 
 - POST api/entries :: creates a new entry (with errors)
 
-** How many tests hit the same endpoints with the same kinds of requests?
-   Both of the tests I just broke apart are interacting solely with the 'entries' endpoint.  No matter what happens on the client -
-   whether the form is totally filled out, empty, or something in between -
-   the end result from the server's point of view is just another permutation of a POST request.
-   
-   Full-stack tests that consume the same API endpoints are prime candidates for splitting into client-side tests and server-side tests.
+Both of the tests I just broke apart are interacting solely with the 'entries' endpoint.  No matter what happens on the client -
+whether the form is totally filled out, empty, or something in between -
+the end result from the server's point of view is just another permutation of a POST request.
+
+Full-stack tests that consume the same API endpoints are prime candidates for splitting into client-side tests and server-side tests.
 ** Having some full-stack tests is still important!
 * Planning to convert a test
 ** Think about what the boundaries for new test(s) should be
@@ -217,10 +222,13 @@ This test makes 2 server requests
    new ember tests
 * The conversion
 ** Creating Test Data
-    For me this has initially been the most difficult part of most test migrations. Most of my backends are Rails, and if I'm already using [[https://github.com/thoughtbot/factory_girl][FactoryGirl]] then it's very convenient to
-    reuse the existing factories for full-stack tests.
-    [[http://www.ember-cli-mirage.com/][Mirage]] can simulate a full-blown API server and it can be used for development too. [[https://github.com/danielspaniel/ember-data-factory-guy][FactoryGuy]] is more meant for pushing models straight into the Ember Store, but it also has facilities for 
-    mocking HTTP requests.  Both are good solutions for acceptance tests.
+    For me this has initially been the most difficult part of most test
+    migrations. Most of my backends are Rails, and if I'm already using
+    [[https://github.com/thoughtbot/factory_girl][FactoryGirl]] then it's very convenient to reuse the existing factories for
+    full-stack tests. [[http://www.ember-cli-mirage.com/][Mirage]] can simulate a full-blown API server and it can be
+    used for development too. [[https://github.com/danielspaniel/ember-data-factory-guy][FactoryGuy]] is more meant for pushing models
+    straight into the Ember Store, but it also has facilities for mocking HTTP
+    requests. Both are good solutions for acceptance tests.
 *** What -not- to test
     A good thing about using a comprehensive framework is that big chunks of functionality are already in place, and normally they 'just work'
     provided they're used correctly.  In this regard Ember's acceptance tests are good because they force me to avoid directly asserting things like 'when the server reponds with correct POST data the state of the model is updated.'
@@ -228,15 +236,16 @@ This test makes 2 server requests
     to the framework.
 
 ** Pick ember test types based on the boundaries and needs
-*** Component tests make loading test data much simpler in some cases
-**** Acceptance tests will test authorization and data loading for all route segments.
-**** The critical part of the system that you're trying to test might not care about any of that.
-     I wrote a [[https://www.mutuallyhuman.com/blog/2016/01/22/component-integration-testing-in-ember][blog post]] about this very thing.
-   - Navigation/routing
-   - Making appropriate API calls
-   - Granularity of user interaction
-   A single capybara test might actually turn into several different Ember tests (more on that)
-
+   Just like how full-stack tests aren't appropriate as the only type of test
+   for an application, Ember acceptance tests shoudn't be the only tool in the
+   toolbox for testing the client side. [[https://guides.emberjs.com/v2.14.0/testing/testing-components/][Component tests]] and [[https://guides.emberjs.com/v2.14.0/testing/unit-testing-basics/][unit tests]] will also
+   come into play in a well-designed test suite. I wrote a [[https://www.mutuallyhuman.com/blog/2016/01/22/component-integration-testing-in-ember][blog post]] about using
+   component tests a little while ago. Some parts of the system will be
+   complicated enough that they'll need to be tested more exhaustively than is
+   sensible with an acceptance test. Component tests can also eliminate much of
+   the cost and pain of setting up test data, especially when the component
+   under test lives at the bottom of a route hierarchy.
+     
 ** API boundaries
 *** Use mirage or mockjax to assert when needed
 * Notes
