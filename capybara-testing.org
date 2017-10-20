@@ -60,12 +60,20 @@
   I also find that moving away from end to end tests makes me ask better questions
   before I write tests. The goal isn't to write _more_ tests, it's to write better
   tests that give me the best overall bang for the buck.
-* Auditing an example full-stack test
-  I'm going to make up a [[https://ember-twiddle.com/e2bd7210727e934a0fe9bca2762ced11?openFiles=controllers.application.js%252C][rolodex app]] to use as an example for testing. This
+
+  To talk about the conceptual process of moving from a full-stack test to a series of other tests,
+  I'll make up a fake application with some hypothetical tests and break them down.
+* Auditing a set of full-stack tests
+  I've to made up a [[https://ember-twiddle.com/e2bd7210727e934a0fe9bca2762ced11?openFiles=controllers.application.js%252C][rolodex app]] in an Ember Twiddle to use as an example for testing. This
   application lets users add an entry to their contacts. That's it! It's not
-  much but it's perfect for the purpose of discussion. I'm going to represent
+  much but it's perfect for the purpose of this discussion. I'm going to represent
   tests as sequence diagrams, handily created via [[http://plantuml.com/sequence-diagram][plantuml]].
-** Draw some sequence diagrams
+
+  The app only lets users persist a contact to their rolodex if they've filled in a last name. It also disables
+  the 'save' button if the user has entered an improperly formatted phone number.  Admittedly this is all arbitrary
+  but it gives me a a few different conditions to test.
+
+  Here's the first test for the 'happy path' where everything goes well.
    #+begin_src plantuml :file diagram-1.png
 Title: User can persist a new entry with all fields filled out.
 
@@ -194,7 +202,7 @@ splitting into client-side tests and server-side tests. I'll go over my thinking
 for splitting up a few of those tests next.
 
 As an example of the high level process I use, I'm going to go back to the first
-persistence test from above, 'A user can persist an entry with all fields filled
+persistence test from above, 'User can persist an entry with all fields filled
 out.', and try to add in all the implicit assertions - thing that have to happen
 over the course of the test.
     #+begin_src plantuml :file diagram-7.png
@@ -234,12 +242,13 @@ situation calls for it. That means creating more tests that are more narrowly
 focused on either the front end or the back end.
 
 For the time being I'll break this test up into a few client tests and a few
-server tests. For the client side I'll assume I'm using an Ember
-[[https://guides.emberjs.com/v2.14.0/testing/acceptance/][acceptance tests]],
-replacing the real API with a mock. I'll go over a few ways to mock the api
-server later.
+server tests. For the client side I'll assume I'm using an Ember [[https://guides.emberjs.com/v2.14.0/testing/acceptance/][acceptance
+tests]], replacing the real API with a mock. I'll go over a few ways to mock the
+api server later.
+
+The first test mimicks the 'happy path' test I did in the beginning, showing that a user can create a new contact.
     #+begin_src plantuml :file diagram-8.png
- Title: Ember 1 - Saving a new rolodex entry posts all the form data to the server
+ Title: Saving a new rolodex entry posts all the form data to the server
  User->Client: visit "/rolodex/" URL
  Client->Mock: GET api/entries
  Mock->Client: 200 {entries: []}
@@ -249,6 +258,7 @@ server later.
  User->Client: fill in phone number with "112-3456"
  User->Client: click "Save"
  Client->Mock: POST api/entries {firstName: "Steve", ...}
+ Mock->Client: 201 {id: 1, ...}
  Note over Mock: Assert that POST occured with form data
  Note over Client: Assert that success message appears
     #+end_src
@@ -273,7 +283,8 @@ In this test I'm making one assertion on the client side after the mock returns 
     #+RESULTS:
     [[file:diagram-9.png]]
  
-    Here's a test for the invalid entry.
+    Here's a test for the invalid entry (where the last name is blank).  This test exposes the fact that in my application the client
+    doesn't have anything to do with validating a contact - the client is just processing what gets sent back from the server.
     #+begin_src plantuml :file diagram-10.png
  Title: API returns 422 for invalid entry
  Test->API: POST api/entries {lastName: "", ...}
@@ -285,33 +296,60 @@ In this test I'm making one assertion on the client side after the mock returns 
     #+RESULTS:
     [[file:diagram-10.png]]
 
-* The conversion
-** Creating Test Data
-    For me this has initially been the most difficult part of most test
-    migrations. Most of my backends are Rails, and if I'm already using
-    [[https://github.com/thoughtbot/factory_girl][FactoryGirl]] then it's very convenient to reuse the existing factories for
-    full-stack tests. [[http://www.ember-cli-mirage.com/][Mirage]] can simulate a full-blown API server and it can be
-    used for development too. [[https://github.com/danielspaniel/ember-data-factory-guy][FactoryGuy]] is more meant for pushing models
-    straight into the Ember Store, but it also has facilities for mocking HTTP
-    requests. Both are good solutions for acceptance tests.
-*** What -not- to test
-    A good thing about using a comprehensive framework is that big chunks of
-    functionality are already in place, and normally they 'just work' provided
-    they're used correctly. In this regard Ember's acceptance tests are good
-    because they force me to avoid directly asserting things like 'when the
-    server reponds with correct POST data the state of the model is updated.'
-    Those kind of tests have their place if I'm writing custom Ember Data
-    adapters or serializers, but for most testing the system overall shouldn't
-    have to care. I want to test the unique aspects of _my_ pages and leave the
-    common stuff to the framework.
 
-** Pick ember test types based on the boundaries and needs
-   Just like how full-stack tests aren't appropriate as the only type of test
-   for an application, Ember acceptance tests shoudn't be the only tool in the
+   Given this test, it might make sense to have another client test describing
+   what happens when the server returns a 422. I'll forgo writing that test for
+   this post, though.
+** Food for thought
+   Breaking a large test into smaller ones involves a lot of work before doing any coding.  In this case I did some diagramming to try to help
+   me answer questions about my original tests, and then to 'design' my new tests before writing them.
+   - "What about my system am I trying to test here?"
+   - "Why am I testing that thing at this layer of the system rather than at some other layer?"
+   - "Is this test going to give me good feedback on how I've designed this part of the system?"
+   
+   Once I have the broad strokes of the new tests worked out I can move on to actually writing them.  I'll talk about some general strategies forgo
+   creating client-side tests, here using Ember.js.
+* Tips for the actual conversion
+** Pick client test types based on the boundaries and needs
+   Just as full-stack tests aren't appropriate as the only type of test
+   for an application, client acceptance tests shoudn't be the only tool in the
    toolbox for testing the client side. [[https://guides.emberjs.com/v2.14.0/testing/testing-components/][Component tests]] and [[https://guides.emberjs.com/v2.14.0/testing/unit-testing-basics/][unit tests]] will also
    come into play in a well-designed test suite. I wrote a [[https://www.mutuallyhuman.com/blog/2016/01/22/component-integration-testing-in-ember][blog post]] about using
-   component tests a little while ago. Some parts of the system will be
+   component tests to improve a test suite's design. Some parts of the system will be
    complicated enough that they'll need to be tested more exhaustively than is
    sensible with an acceptance test. Component tests can also eliminate much of
    the cost and pain of setting up test data, especially when the component
    under test lives at the bottom of a route hierarchy.
+** What -not- to test
+   A good thing about using a comprehensive framework is that big chunks of
+   functionality are already in place, and normally they 'just work' provided
+   they're used correctly. In this regard Ember's acceptance tests are good
+   because they force me to avoid directly asserting things like 'when the
+   server reponds with correct POST data the state of the model is updated.'
+   Those kind of tests have their place if I'm writing custom Ember Data
+   adapters or serializers, but for most testing the system overall shouldn't
+   have to care. I want to test the unique aspects of _my_ pages and leave the
+   common stuff to the framework.
+** Preconditions and postconditions
+   Creating new tests can be debugging adventures unto themselves. When I find
+   myself getting stuck while trying to set up a test (which is often), I'll ask
+   myself a few big-picture questions.
+   - "What needs to be true before this test runs in order for it to succeed?"  (preconditions)
+   - "What should be true after this test runs?" (postconditions)
+   I think I've wasted the most time assuming something was already true when it
+   wasn't. I thought I'd mocked out a api request, but I'd mocked it out
+   incorrectly and I only actually checked after chasing my tail for 20 minutes,
+   etc. Take nothing for granted.
+** Creating Test Data
+   For me this has initially been the most difficult part of most test
+   migrations. Most of my backends are Rails, and if I'm already using
+   [[https://github.com/thoughtbot/factory_girl][FactoryGirl]] then it's very convenient to reuse the existing factories for
+   full-stack tests. [[http://www.ember-cli-mirage.com/][Mirage]] can simulate a full-blown API server and it can be
+   used for development too. [[https://github.com/danielspaniel/ember-data-factory-guy][FactoryGuy]] is more meant for pushing models
+   straight into the Ember Store, but it also has facilities for mocking HTTP
+   requests. Both are good solutions for acceptance tests.
+* Wrapping up
+  Full-stack testing is really useful but it shouldn't be the only tool a developer reaches for.  More granular tests focusing
+  on specific parts of the application stack provide better design feedback for those parts.  If an application already has a hard split between
+  the client and the server (like an Ember.js frontend), the client has its own rich set of testing tools that can be used to ask better questions
+  an avoid relying too much on having to test the full stack.
