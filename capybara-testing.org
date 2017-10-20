@@ -1,45 +1,74 @@
+#+OPTIONS: toc:nil
 * Replacing full stack tests with client tests
 ** Tagline
-Full-stack testing of a single page app can essential to maintaining quality, but those tests come with tradeoffs.  Sometimes they're
-appropriate to write and sometimes they're appropriate to remove.
+   Full-stack testing of a single page app can essential to maintaining quality,
+   but those tests come with tradeoffs. Sometimes they're appropriate to write
+   and sometimes they're appropriate to remove.
 ** Opener
-I've been working on an Ember.js application for a client that started life as a
-Rails application some years ago. When we adopted Ember we already had a good number of existing full-stack tests in place.
-As our application has grown we've added all kinds of new tests, including many new full-stack tests.
+   I've been working on an Ember.js application for a client that started life
+   as a Rails application some years ago. When we adopted Ember we already had a
+   good number of existing full-stack tests in place. As our application has
+   grown we've added all kinds of new tests, including many new full-stack
+   tests.
 
-For the purposes of this post I'll define full-stack tests as tests that run both the client and the server and talk to your application via the browser.
-My example application uses [[https:github.com/teamcapybara/capybara][Capybara]] but there are similar projects for most languages and frameworks
+   For the purposes of this post I'll define full-stack tests as tests that run
+   both the client and the server and talk to your application via the browser.
+   My example application uses [[https:github.com/teamcapybara/capybara][Capybara]] but there are similar projects for most
+   languages and frameworks
 * Good things about full-stack tests
-Full-stack tests promote thinking about the app from user's point of view.  With a few assertions they can exercise all the disparate pieces of the system
-to confirm that they're properly working in concert.  For features like websocket interactions, a single full-stack smoke test is almost essential to confirm that things
-are going as planned, even if the individual parts of the interaction are also covered by unit tests.
+  Full-stack tests promote thinking about the app from user's point of view.
+  With a few assertions they can exercise all the disparate pieces of the system
+  to confirm that they're properly working in concert. For features like
+  websocket interactions, a single full-stack smoke test is almost essential to
+  confirm that things are going as planned, even if the individual parts of the
+  interaction are also covered by unit tests.
 
-Most of the projects I work on are Rails applications that use Capybara for testing.  In that case, we also have the luxury of using test factories from the Rails application to build
-test data for the full-stack tests (thank you [[https://github.com/thoughtbot/factory_girl][FactoryGirl]]). Once we have some good page factories and page objects in place, new tests are quick to write and provide a lot of coverage.
-With a mature client framework like Ember, however, I find myself taking advantage of the separation between client and server and writing fewer full-stack test, or even removing existing ones.
+  Most of the projects I work on are Rails applications that use Capybara for
+  testing. In that case, we also have the luxury of using test factories from
+  the Rails application to build test data for the full-stack tests (thank you
+  [[https://github.com/thoughtbot/factory_girl][FactoryGirl]]). Once we have some good page factories and page objects in place,
+  new tests are quick to write and provide a lot of coverage. With a mature
+  client framework like Ember, however, I find myself taking advantage of the
+  separation between client and server and writing fewer full-stack test, or
+  even removing existing ones.
 * Bad things about full-stack tests?
-Why would I remove a full-stack test? Isn't that coverage a good thing? Sometimes it can be too much of a good thing!  
-With a traditional server-rendered application there's almost a 1:1 ratio of user actions on the screen to controller actions on the back end.
-I go to a page, maybe fill out a few simple form fields, and hit 'Submit'. With a client application the user could perform many actions before ever doing something that communicates with
-the server. I can create complex form validations on the client that never have to submit to the server, and having to test those interactions via the full stack starts to feel a little wasteful.
-Most tests that exercise the full stack can be split up into a set of smaller tests that touch the client and the API separately.  Those smaller tests are often much faster as well.
-Waiting 15 seconds for a Capybara test to run vs. having the Ember test server auto reload in 2 seconds makes huge difference in the feedback loop for a feature.
-Those tests can also be fragile setup-wise, especially if an application has a lot of different kinds of data to load.  
+  Why would I remove a full-stack test? Isn't that coverage a good thing?
+  Sometimes it can be too much of a good thing! With a traditional server-rendered
+  application there's almost a 1:1 ratio of user actions on the screen to
+  controller actions on the back end. I go to a page, maybe fill out a few simple
+  form fields, and hit 'Submit'. With a client application the user could perform
+  many actions before ever doing something that communicates with the server. I
+  can create complex form validations on the client that never have to submit to
+  the server, and having to test those interactions via the full stack starts to
+  feel a little wasteful. Most tests that exercise the full stack can be split up
+  into a set of smaller tests that touch the client and the API separately. Those
+  smaller tests are often much faster as well. Waiting 15 seconds for a Capybara
+  test to run vs. having the Ember test server auto reload in 2 seconds makes huge
+  difference in the feedback loop for a feature. Those tests can also be fragile
+  setup-wise, especially if an application has a lot of different kinds of data to
+  load.
 
-Creating tests for the system as a black box also doesn't provide me as a developer with any feedback about the design of the system's parts. Unit tests and more focused integration tests will
-give off a kind of 'testability' smell, and I've always found it beneficial to follow my nose in that regard.  Making a component (whether it's a part of the front end or the back end) easier to 
-test normally results in a component that's easier to reason about and easier to change later.  In Ember terms, testability drives me towards using [[https://guides.emberjs.com/v2.15.0/applications/services/][Services]] and components.   
+  Creating tests for the system as a black box also doesn't provide me as a
+  developer with any feedback about the design of the system's parts. Unit tests
+  and more focused integration tests will give off a kind of 'testability' smell,
+  and I've always found it beneficial to follow my nose in that regard. Making a
+  component (whether it's a part of the front end or the back end) easier to test
+  normally results in a component that's easier to reason about and easier to
+  change later. In Ember terms, testability drives me towards using [[https://guides.emberjs.com/v2.15.0/applications/services/][Services]] and
+  components.
 
-I also find that moving away from end to end tests makes me ask better questions before I write tests.  The goal isn't to write _more_ tests, it's to write better tests that give me the best overall
-bang for the buck.
-
+  I also find that moving away from end to end tests makes me ask better questions
+  before I write tests. The goal isn't to write _more_ tests, it's to write better
+  tests that give me the best overall bang for the buck.
 * Auditing an example full-stack test
-I'm going to make up a [[https://ember-twiddle.com/e2bd7210727e934a0fe9bca2762ced11?openFiles=controllers.application.js%252C][rolodex app]] to use as an example for testing.  This application lets users add an entry to their contacts.
-That's it!  It's not much but it's perfect for the purpose of discussion. I'm going to represent tests as sequence diagrams, handily created
-via [[https://github.com/bramp/js-sequence-diagrams%20][js-sequence-diagrams]].
+  I'm going to make up a [[https://ember-twiddle.com/e2bd7210727e934a0fe9bca2762ced11?openFiles=controllers.application.js%252C][rolodex app]] to use as an example for testing. This
+  application lets users add an entry to their contacts. That's it! It's not
+  much but it's perfect for the purpose of discussion. I'm going to represent
+  tests as sequence diagrams, handily created via [[http://plantuml.com/sequence-diagram][plantuml]].
 ** Draw some sequence diagrams
-   #+begin_src uml
+   #+begin_src plantuml :file diagram-1.png
 Title: User can persist a new entry with all fields filled out.
+
 User->App: visit "/rolodex/" URL
 User->App: click "+"
 User->App: fill in first name with "Steve"
@@ -50,12 +79,17 @@ Note over User: expect to see "saved"
 User->App: reload page
 Note over User: expect to see "Steve Jones" with "112-3456"
    #+end_src
-This test creates a new entry in the rolodex, fills it out, saves, and then reloads
-to ensure that the new entry was properly persisted.  That's a lot of things for a single test!
-In some ways this is a great *smoke test*.  It verifies that a big chunk of the system is working in a holistic fashion.
 
-Now I'll add three other tests.  
-   #+begin_src uml
+   #+RESULTS:
+   [[file:test.png]]
+
+   This test creates a new entry in the rolodex, fills it out, saves, and then
+   reloads to ensure that the new entry was properly persisted. That's a lot of
+   things for a single test! In some ways this is a great *smoke test*. It verifies
+   that a big chunk of the system is working in a holistic fashion.
+
+   Now I'll add three other tests.  
+   #+begin_src plantuml :file diagram-2.png
 Title: User can persist a new entry omitting first name
 User->App: visit "/rolodex/" URL
 User->App: click "+"
@@ -67,7 +101,10 @@ User->App: reload page
 Note over User: expect to see "Jones" with "112-3456"
    #+end_src
 
-   #+begin_src uml
+   #+RESULTS:
+   [[file:diagram-2.png]]
+
+   #+begin_src plantuml :file diagram-3.png
 Title: User can NOT persist a new entry omitting last name
 User->App: visit "/rolodex/" URL
 User->App: click "+"
@@ -78,7 +115,10 @@ User->App: reload page
 Note over User: expect to see empty list
    #+end_src
 
-   #+begin_src uml
+   #+RESULTS:
+   [[file:diagram-3.png]]
+
+   #+begin_src plantuml :file diagram-4.png
 Title: Save button is disabled when phone number has letters
 User->App: visit "/rolodex/" URL
 User->App: click "+"
@@ -86,11 +126,15 @@ User->App: fill in phone number with "FOO"
 Note over User: expect save to be disabled
    #+end_src
 
-All four of the tests here will test different parts of the same page.  How can I make it easier to see which
-tests might be redundant as full-stack tests?  I'm going to add the API Server as an actor to my first test sequence
-to give some granularity as to what I'm actually testing.
+   #+RESULTS:
+   [[file:diagram-4.png]]
 
-#+begin_src uml
+   All four of the tests here will test different parts of the same page. How can I
+   make it easier to see which tests might be redundant as full-stack tests? I'm
+   going to add the API Server as an actor to my first test sequence to give some
+   granularity as to what I'm actually testing.
+
+#+begin_src plantuml :file diagram-5.png
 Title: User can persist a new entry with all fields filled out.
 User->Client: visit "/rolodex/" URL
 Client->API: GET api/entries
@@ -109,6 +153,9 @@ API->Client: 200 {entries: [{id: 1, firstName: "Steve", ...}]}
 Note over User: expect to see "Steve Jones" with "112-3456"
 #+end_src
 
+#+RESULTS:
+[[file:diagram-5.png]]
+
 This test makes 3 server requests
 - GET api/entries :: loads the list of entries from the server. 
 - POST api/entries :: creates a new entry
@@ -116,7 +163,7 @@ This test makes 3 server requests
 
 
 Here's the other test that deals with persistence, broken up in the same fashion.
-#+begin_src uml
+#+begin_src plantuml :file diagram-6.png
 Title: User can NOT persist a new entry omitting last name
 User->Client: visit "/rolodex/" URL
 Client->API: GET api/entries
@@ -130,26 +177,27 @@ API->Client: 422 {errors:{...}}
 Note over User: expect to see error message for last name
 #+end_src
 
+#+RESULTS:
+[[file:diagram-6.png]]
+
 This test makes 2 server requests
 - GET api/entries :: loads the list of entries from the server. 
 - POST api/entries :: creates a new entry (with errors)
 
-Both of the tests I just broke apart are interacting solely with the 'entries' endpoint.  No matter what happens on the client -
-whether the form is totally filled out, empty, or something in between -
-the end result from the server's point of view is just another permutation of a POST request.
+Both of the tests I just broke apart are interacting solely with the 'entries'
+endpoint. No matter what happens on the client - whether the form is totally
+filled out, empty, or something in between - the end result from the server's
+point of view is just another permutation of a POST request.
 
-Full-stack tests that consume the same API endpoints are prime candidates for splitting into client-side tests and server-side tests.
-** Having some full-stack tests is still important!
-* Planning to convert a test
-** Think about what the boundaries for new test(s) should be
-   - What unique aspect of your application are you trying to test?
-   - Describe guidelines for test boundaries
-     - API calls
-     - DOM side effects
-*** An example
-    As an example of the high level process I use, I'm going to go back to the first persistence test from above, 'A user can persist an entry with all fields filled out.', and
-    try to add in all the implicit assertions - thing that have to happen over the course of the test.
-    #+begin_src uml
+Full-stack tests that consume the same API endpoints are prime candidates for
+splitting into client-side tests and server-side tests. I'll go over my thinking
+for splitting up a few of those tests next.
+
+As an example of the high level process I use, I'm going to go back to the first
+persistence test from above, 'A user can persist an entry with all fields filled
+out.', and try to add in all the implicit assertions - thing that have to happen
+over the course of the test.
+    #+begin_src plantuml :file diagram-7.png
  Title: User can persist a new entry with all fields filled out.
  User->Client: visit "/rolodex/" URL
  Client->API: GET api/entries
@@ -175,13 +223,22 @@ Full-stack tests that consume the same API endpoints are prime candidates for sp
  Note over Client: client shows all entries returned from the server
     #+end_src
 
-    In a perfect world, there'd only be one test for each of those assertions in the entire test suite. Testing the whole stack can be great
-    because it does just that - a single test makes sure a whole bunch of things are correctly working in concert. For my purposes, though, I'd like to only
-    test the whole stack when the situation calls for it.  That means creating more tests that are more narrowly focused on either the front end or the back end.
+    #+RESULTS:
+    [[file:diagram-7.png]]
 
-    For the time being I'll break this test up into a few client tests and a few server tests. For the client side I'll assume I'm using an Ember [[https://guides.emberjs.com/v2.14.0/testing/acceptance/][acceptance tests]], replacing the real API with a mock.
-    I'll go over a few ways to mock the api server later.
-    #+begin_src uml
+In a perfect world, there'd only be one test for each of those assertions in the
+entire test suite. Testing the whole stack can be great because it does just
+that - a single test makes sure a whole bunch of things are correctly working in
+concert. For my purposes, though, I'd like to only test the whole stack when the
+situation calls for it. That means creating more tests that are more narrowly
+focused on either the front end or the back end.
+
+For the time being I'll break this test up into a few client tests and a few
+server tests. For the client side I'll assume I'm using an Ember
+[[https://guides.emberjs.com/v2.14.0/testing/acceptance/][acceptance tests]],
+replacing the real API with a mock. I'll go over a few ways to mock the api
+server later.
+    #+begin_src plantuml :file diagram-8.png
  Title: Ember 1 - Saving a new rolodex entry posts all the form data to the server
  User->Client: visit "/rolodex/" URL
  Client->Mock: GET api/entries
@@ -195,31 +252,39 @@ Full-stack tests that consume the same API endpoints are prime candidates for sp
  Note over Mock: Assert that POST occured with form data
  Note over Client: Assert that success message appears
     #+end_src
-    This smaller test still does a lot! It visits a route, interacts with the DOM, and talks to the mock API. 
-    In this test I'm making one assertion on the client side after the mock returns its POST response because the flash message will only appear when the promise for 
-    `entry.save()` resolves. 
+
+    #+RESULTS:
+    [[file:diagram-8.png]]
+
+This smaller test still does a lot! It visits a route, interacts with the DOM, and talks to the mock API. 
+In this test I'm making one assertion on the client side after the mock returns its POST response because the flash message will only appear when the promise for 
+`entry.save()` resolves. 
 *** Server tests
     Looking back at the sequence diagram for the full-stack test, I've tested the User->Client portions of the system, but I still need to test the Client->API part now.
     The original full-stack test was checking a few cases for the API, so I'll need multiple server tests to make sure I don't lose any coverage.
-    #+begin_src uml
+    #+begin_src plantuml :file diagram-9.png
  Title: API persists new entries and responds with 201
  Test->API: POST api/entries {firstName: "Steve", ...}
  API->Test: 201 {id: 1, firstName: "Steve", ...}
  Note over Test: API returns a 201 with the newly persisted entry on success
  Note over Test: database contains new entry
     #+end_src
+
+    #+RESULTS:
+    [[file:diagram-9.png]]
  
     Here's a test for the invalid entry.
-    #+begin_src uml
+    #+begin_src plantuml :file diagram-10.png
  Title: API returns 422 for invalid entry
  Test->API: POST api/entries {lastName: "", ...}
  API->Test: 422 {errors: {}}
  Note over Test: API returns a 422
  Note over Test: database does not contain new entry
     #+end_src
-** Don't lose test coverage
-   You may need to add new request specs to take the place of the old capybara test, in addition to the 
-   new ember tests
+
+    #+RESULTS:
+    [[file:diagram-10.png]]
+
 * The conversion
 ** Creating Test Data
     For me this has initially been the most difficult part of most test
@@ -230,10 +295,15 @@ Full-stack tests that consume the same API endpoints are prime candidates for sp
     straight into the Ember Store, but it also has facilities for mocking HTTP
     requests. Both are good solutions for acceptance tests.
 *** What -not- to test
-    A good thing about using a comprehensive framework is that big chunks of functionality are already in place, and normally they 'just work'
-    provided they're used correctly.  In this regard Ember's acceptance tests are good because they force me to avoid directly asserting things like 'when the server reponds with correct POST data the state of the model is updated.'
-    Those kind of tests have their place if I'm writing custom Ember Data adapters or serializers, but for most testing the system overall shouldn't have to care.  I want to test the unique aspects of _my_ pages and leave the common stuff
-    to the framework.
+    A good thing about using a comprehensive framework is that big chunks of
+    functionality are already in place, and normally they 'just work' provided
+    they're used correctly. In this regard Ember's acceptance tests are good
+    because they force me to avoid directly asserting things like 'when the
+    server reponds with correct POST data the state of the model is updated.'
+    Those kind of tests have their place if I'm writing custom Ember Data
+    adapters or serializers, but for most testing the system overall shouldn't
+    have to care. I want to test the unique aspects of _my_ pages and leave the
+    common stuff to the framework.
 
 ** Pick ember test types based on the boundaries and needs
    Just like how full-stack tests aren't appropriate as the only type of test
@@ -245,9 +315,3 @@ Full-stack tests that consume the same API endpoints are prime candidates for sp
    sensible with an acceptance test. Component tests can also eliminate much of
    the cost and pain of setting up test data, especially when the component
    under test lives at the bottom of a route hierarchy.
-     
-** API boundaries
-*** Use mirage or mockjax to assert when needed
-* Notes
-  - Make sure to add actual examples of the capybara spec we're talking about
-  - Give a brief refresher about what the spec is doing (what's the difference between the request spec, the feature spec, etc)
